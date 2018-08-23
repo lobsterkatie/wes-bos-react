@@ -4,12 +4,52 @@ import Inventory from "./Inventory";
 import Order from "./Order";
 import sampleFishes from "../sample-fishes";
 import Fish from "./Fish";
+import base from "../base";
 
 class App extends React.Component {
   state = {
     fishes: {},
     order: {}
   };
+
+  componentDidMount() {
+    const { params } = this.props.match;
+    this.ref = base.syncState(`${params.storeId}/fishes`, {
+      context: this,
+      state: "fishes",
+      //make updating the order from localStorage a callback on the firebase
+      //data retrieval - otherwise the order will get updated before the data
+      //is back from firebase and the order will try to render with non-existent
+      //fish
+      then: () => {
+        const localStorageRef = localStorage.getItem(params.storeId);
+        if (localStorageRef) {
+          this.setState({
+            order: JSON.parse(localStorageRef)
+          });
+        }
+      }
+    });
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    //this check is necessary because the very first time this function is
+    //called, it will be because firebase is updating the cannonical fish
+    //(which has to happen before the order is updated, or the order will
+    //try to render non-existent fish). However, if localStorage is updated to
+    //match state at that point, the empty order state which is the initial
+    //value will overwrite localStoarage's correct values
+    if (Object.keys(prevState.fishes).length !== 0) {
+      localStorage.setItem(
+        this.props.match.params.storeId,
+        JSON.stringify(this.state.order)
+      );
+    }
+  }
+
+  componentWillUnmount() {
+    base.removeBinding(this.ref);
+  }
 
   addFish = fish => {
     //this copies the current state so we can reach into it and do stuff
@@ -24,7 +64,6 @@ class App extends React.Component {
   };
 
   addToOrder = key => {
-    console.log(key);
     const order = { ...this.state.order };
     order[key] = (order[key] || 0) + 1;
     this.setState({ order });
