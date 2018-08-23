@@ -9,7 +9,8 @@ import base from "../base";
 class App extends React.Component {
   state = {
     fishes: {},
-    order: {}
+    order: {},
+    loading: true
   };
 
   componentDidMount() {
@@ -28,18 +29,19 @@ class App extends React.Component {
             order: JSON.parse(localStorageRef)
           });
         }
+        this.state.loading = false;
       }
     });
   }
 
-  componentDidUpdate(prevProps, prevState) {
+  componentDidUpdate() {
     //this check is necessary because the very first time this function is
     //called, it will be because firebase is updating the cannonical fish
     //(which has to happen before the order is updated, or the order will
     //try to render non-existent fish). However, if localStorage is updated to
     //match state at that point, the empty order state which is the initial
     //value will overwrite localStoarage's correct values
-    if (Object.keys(prevState.fishes).length !== 0) {
+    if (!this.state.loading) {
       localStorage.setItem(
         this.props.match.params.storeId,
         JSON.stringify(this.state.order)
